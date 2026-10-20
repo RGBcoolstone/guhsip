@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.guhsip.app",
+        "sha256_cert_fingerprints": ["30:A1:AA:F4:F6:99:B9:12:89:72:42:08:31:76:18:CC:E2:44:3C:FC:6A:C4:1D:A8:A8:06:7F:D9:F3:20:EF:3C"]
+      }
+    }]
