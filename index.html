@@ -14,16 +14,26 @@
       <label id="tr" class="terms" hidden><input id="t" type="checkbox"><span>I'm 18 or older. I won't post threats, harassment, hate, nudes or doxxing, or target named students or staff. I'm responsible for what I post, and GUHSIP isn't. My email is stored privately and may be shared with authorities if the law requires. Rule-breaking posts and accounts get removed. <a href="rules.html" target="_blank">Read the rules</a>.</span></label>
       <button id="go" class="btn full">Log in</button><p id="msg" class="msg"></p>
     </form>
-        <p class="muted" id="fgp">Forgot your password? <a href="#" id="fg">Reset it</a></p>
+        <div id="alt"><div class="or">or</div><button type="button" id="gg" class="ghost full">Continue with Google</button>
+      <p class="muted" style="font-size:12px;margin-top:8px">By continuing with Google you accept the <a href="rules.html" target="_blank">rules</a> and confirm you are 18 or older.</p></div>
+    <p class="muted" id="fgp">Forgot your password? <a href="#" id="fg">Reset it</a></p>
+    <div id="rc" hidden>
+      <h2>Save your recovery code</h2>
+      <p class="muted">This lets you reset your password without email. It is shown once. Screenshot it or write it down.</p>
+      <div class="code" id="code"></div>
+      <button id="cp" class="btn full" type="button">Copy code</button>
+      <button id="ok" class="ghost full" type="button" style="margin-top:8px">I saved it, continue</button>
+    </div>
     <div id="rp" hidden>
       <h2>Reset password</h2>
-      <form id="sr"><input id="rem" type="email" placeholder="Your email" required><button class="btn full">Send reset link</button></form>
-      <details><summary>Older account without an email? Use your recovery code</summary>
-        <form id="rf">
-          <input id="ru" placeholder="Username" required><input id="rcode" placeholder="Recovery code" required>
-          <input id="rnp" type="password" autocomplete="new-password" placeholder="New password (8+ characters)" required>
-          <button class="btn full">Set new password</button>
-        </form></details>
+      <p class="muted">Enter your username, your recovery code and a new password.</p>
+      <form id="rf">
+        <input id="ru" placeholder="Username" required><input id="rcode" placeholder="Recovery code" required>
+        <input id="rnp" type="password" autocomplete="new-password" placeholder="New password (8+ characters)" required>
+        <button class="btn full">Set new password</button>
+      </form>
+      <details><summary>No recovery code? Email me a reset link instead</summary>
+        <form id="sr"><input id="rem" type="email" placeholder="Your email" required><button class="btn full">Send reset link</button></form></details>
       <p id="rm" class="msg"></p>
     </div>
   </div>
@@ -33,17 +43,18 @@
 $('hero').innerHTML = `${logo('logo')}<span class="word">${WORD}</span><p class="tag">What's the sip?</p>`;
 const here = f => new URL(f, location.href).href;
 let mode = 'login';
+const dest = () => { const n = sessionStorage.getItem('next'); sessionStorage.removeItem('next'); return n || 'feed.html'; };
 const msg = (t, ok) => { $('msg').textContent = t || ''; $('msg').className = 'msg' + (ok ? ' ok' : ''); };
 function setMode(m) {
   mode = m; const s = m === 'signup';
   $('tl').classList.toggle('on', !s); $('ts').classList.toggle('on', s);
   $('em').hidden = $('tr').hidden = !s; $('em').required = s;
-  $('u').placeholder = s ? 'Username (shown to others)' : 'Email';
+  $('u').placeholder = s ? 'Username (shown to others)' : 'Email or username';
   $('p').autocomplete = s ? 'new-password' : 'current-password';
   $('go').textContent = s ? 'Create account' : 'Log in'; msg();
 }
 $('tl').onclick = () => setMode('login'); $('ts').onclick = () => setMode('signup'); setMode('login');
-sb.auth.getSession().then(({ data }) => { if (data.session) location.href = 'feed.html'; });
+sb.auth.getSession().then(({ data }) => { if (data.session) location.href = dest(); });
 
 $('f').onsubmit = async e => {
   e.preventDefault(); msg();
@@ -51,33 +62,45 @@ $('f').onsubmit = async e => {
   if (p.length < 8) return msg('Password must be at least 8 characters.');
   if (mode === 'login') {
     const r = await sb.auth.signInWithPassword({ email: v.includes('@') ? v : v + '@guhsip.app', password: p });
-    if (r.error) return msg(/confirm/i.test(r.error.message) ? 'Verify your email first. Check your inbox and spam folder.' : 'Wrong email, username or password.');
+    if (r.error) return msg(offline(r.error) ? OFFLINE : /confirm/i.test(r.error.message) ? 'Verify your email first. Check your inbox and spam folder.' : 'Wrong email, username or password.');
     const adm = await sb.from('admins').select('user_id').maybeSingle();
     return location.href = adm.data ? 'admin.html' : 'feed.html';
   }
   if (!/^[a-z0-9_]{3,20}$/.test(v)) return msg('Username must be 3 to 20 letters, numbers or underscores.');
   if (!$('t').checked) return msg('Accept the rules to create an account.');
   const free = await sb.rpc('username_free', { u: v });
-  if (free.error) return msg('Could not check the username: ' + free.error.message);
+  if (free.error) return msg(friendly(free.error, 'Something went wrong. Please try again in a moment.'));
   if (!free.data) return msg('That username is taken or reserved.');
   const r = await sb.auth.signUp({ email: $('em').value.trim().toLowerCase(), password: p, options: { data: { username: v }, emailRedirectTo: here('feed.html') } });
-  if (r.error) return msg(r.error.message);
+  if (r.error) return msg(authMsg(r.error));
   if (r.data.user && r.data.user.identities && !r.data.user.identities.length) return msg('That email already has an account. Try logging in.');
-  if (r.data.session) return location.href = 'feed.html';
+  if (r.data.session) {
+    const code = await newCode();
+    if (!code) return location.href = dest();
+    document.querySelector('.tabs').hidden = $('f').hidden = $('fgp').hidden = $('alt').hidden = true; $('rc').hidden = false;
+    $('code').textContent = fmtCode(code);
+    $('cp').onclick = () => navigator.clipboard.writeText($('code').textContent).then(() => $('cp').textContent = 'Copied');
+    $('ok').onclick = () => location.href = dest();
+    return;
+  }
   msg('Almost done. Click the link we emailed you to verify, then log in. Check spam too.', true);
 };
 
-$('fg').onclick = e => { e.preventDefault(); $('f').hidden = $('fgp').hidden = document.querySelector('.tabs').hidden = true; $('rp').hidden = false; };
+$('gg').onclick = async () => {
+  const r = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: here(dest()) } });
+  if (r.error) msg(offline(r.error) ? OFFLINE : "Couldn't start Google sign-in. Please try again.");
+};
+$('fg').onclick = e => { e.preventDefault(); $('f').hidden = $('fgp').hidden = $('alt').hidden = document.querySelector('.tabs').hidden = true; $('rp').hidden = false; };
 const rmsg = t => $('rm').textContent = t;
 $('sr').onsubmit = async e => {
   e.preventDefault();
   const r = await sb.auth.resetPasswordForEmail($('rem').value.trim(), { redirectTo: here('reset.html') });
-  rmsg(r.error ? r.error.message : 'If that email has an account, a reset link is on its way.');
+  rmsg(r.error ? authMsg(r.error) : 'If that email has an account, a reset link is on its way.');
 };
 $('rf').onsubmit = async e => {
   e.preventDefault();
   const { data, error } = await sb.rpc('reset_password', { uname: $('ru').value.trim(), code: $('rcode').value.replace(/[^A-Za-z0-9]/g, '').toUpperCase(), newpw: $('rnp').value });
-  rmsg(error ? error.message : data ? 'Password changed. Reloading so you can log in...' : 'Wrong username or code, or too many tries. Wait 15 minutes.');
+  rmsg(error ? authMsg(error) : data ? 'Password changed. Reloading so you can log in...' : 'Wrong username or code, or too many tries. Wait 15 minutes.');
   if (data) setTimeout(() => location.reload(), 1800);
 };
 </script></body></html>

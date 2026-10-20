@@ -153,3 +153,4 @@ details{margin-top:14px}summary{cursor:pointer;color:var(--muted);font-size:14px
 .srow{display:flex;justify-content:space-between;align-items:center;gap:10px;color:var(--ink);padding:14px 16px;margin-bottom:8px}
 .srow span:last-child{color:var(--muted)}
 @media(max-width:800px){.top{position:relative}.side nav a[href="settings.html"]{display:none}}
+.pl{color:var(--sip)!important;font-weight:700}

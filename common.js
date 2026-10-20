@@ -66,7 +66,7 @@ async function guard(optional) {
     `<aside class="side"><a class="brand" href="feed.html">${logo('mini')}<span class="word">${WORD}</span></a>
      <nav>${link('feed.html', 'home', 'Home')}${link('search.html', 'search', 'Search')}${link('notifications.html', 'bell', 'Notifications')}${link('messages.html', 'chat', 'Messages')}${link('profile.html', 'user', 'Profile')}${link('settings.html', 'gear', 'Settings')}</nav></aside>
      <div class="top"><a class="tl" href="feed.html">${logo('mini')}<span class="word">${WORD}</span></a><a class="gear" href="settings.html" aria-label="Settings">${ico('gear')}</a></div>`);
-  needName(); bell(); banCheck(); msgBadge();
+  needName().finally(() => setTimeout(maybeTour, 400)); bell(); banCheck(); msgBadge();
   return me;
 }
 
@@ -313,4 +313,37 @@ async function sharePost(id, btn) {
   try { if (navigator.share) { await navigator.share({ title: 'GUHSIP', text: t, url }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
   try { await navigator.clipboard.writeText(url); btn.textContent = 'Link copied'; setTimeout(() => btn.textContent = 'Share', 1800); }
   catch (e) { prompt('Copy this link:', url); }
+}
+
+// Intro tour: shows once after sign-in. Replay from Settings → Tutorial → Play.
+const TOUR = [
+  ['Welcome to GUHSIP', 'Sips are quick posts: gist, reviews, fun or questions. Here is how the app works, in about a minute.'],
+  ['Your menu', 'On a computer it is on the left. On a phone it is the bar at the bottom: Home, Search, Notifications, Messages and Profile. The gear at the top right opens Settings.'],
+  ['Post a sip', 'Type in the box on Home, pick a community and a type (Review lets you add stars), add a photo or an emoji, then tap Post.'],
+  ['React and talk', 'Tap the tea to give a sip a tea. Tap Comments to read and reply. Tap Share to send a link anywhere.'],
+  ['Follow people', 'Tap Follow on anyone\'s sip. Their sips appear under the Following tab on Home, and they become your Guhsippers.'],
+  ['Messages', 'Open someone\'s profile and tap Message. You can delete your own messages, block people, or report them.'],
+  ['Stay safe', 'Report anything that breaks the rules. Three warnings means a ban. Save your recovery code: it is the only way to reset a forgotten password.'],
+  ['Replay anytime', 'You can watch this tour again from Settings, then Tutorial, then Play.']
+];
+let tourStep = 0;
+function maybeTour() {
+  if (!me || document.getElementById('nm') || document.querySelector('.ovl')) return;
+  const force = new URLSearchParams(location.search).get('tour') === '1';
+  if (!force && localStorage.getItem('tour-' + me)) return;
+  tourStep = 0; showTour();
+}
+function showTour() {
+  const [t, b] = TOUR[tourStep], last = tourStep === TOUR.length - 1;
+  let o = document.getElementById('tour');
+  if (!o) { document.body.insertAdjacentHTML('beforeend', '<div class="ovl" id="tour"><div class="card"></div></div>'); o = document.getElementById('tour'); }
+  o.querySelector('.card').innerHTML = `<div class="meta">${tourStep + 1} of ${TOUR.length}</div><h2 style="margin-top:6px">${t}</h2><p>${b}</p>
+    <div class="row" style="justify-content:space-between;margin-top:14px"><button class="ghost" id="tskip">Skip</button><button class="btn" id="tnext">${last ? 'Done' : 'Next'}</button></div>`;
+  $('tskip').onclick = endTour;
+  $('tnext').onclick = () => { if (last) endTour(); else { tourStep++; showTour(); } };
+}
+function endTour() {
+  if (me) localStorage.setItem('tour-' + me, '1');
+  const o = document.getElementById('tour'); if (o) o.remove();
+  if (location.search.includes('tour=1')) history.replaceState(null, '', location.pathname);
 }
