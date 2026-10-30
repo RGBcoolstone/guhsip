@@ -1,0 +1,25 @@
+The download page is built. I named it guhsipdownload.html, all lowercase, so the link works reliably. It’s on your site at guhsip.vercel.app/guhsipdownload.html.
+
+What it does
+Shows your logo and a green Download the APK button.
+Gives five install steps for Android, including the “Allow from this source” part and the Play Protect warning, so people aren’t stuck.
+Tells iPhone users to use Add to Home Screen instead, since iPhones can’t install APK files.
+Links to the rules, privacy and terms pages.
+Has links from the login page and from Settings → App.
+Add the APK file (this step matters)
+
+The download button points to downloads/guhsip.apk, and that file isn’t in the zip, because it’s the app package itself.
+
+Find the APK file in the PWABuilder zip (it ends in .apk, not .aab).
+Rename it to guhsip.apk.
+Put it in a folder called downloads inside your GUHSIP folder.
+Push everything with git add ., git commit and git push. The APK is a few MB, which GitHub accepts.
+
+After Vercel shows Ready, open guhsip.vercel.app/downloads/guhsip.apk in your browser. The file should start downloading straight away. If it opens a page instead, the file isn’t in the right place.
+
+Things to know
+Replace the APK only when the app itself changes. Website updates reach installed apps automatically, because the app just opens your site. You’d only need a new APK if you change the package name, the icon or the app’s signing setup.
+The download page is public, so anyone can get the APK. That’s the point, but it’s also why the page says to only download from it.
+Make the page reachable. It has no login, so it works for people who aren’t signed in.
+
+Replace your files with guhsip-round11.zip and ad
